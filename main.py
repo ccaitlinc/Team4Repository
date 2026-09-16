@@ -1,5 +1,6 @@
 import pygame
 import sys
+import psycopg2
 
 pygame.init()
 
@@ -10,6 +11,9 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Laser Tag System")
 
 clock = pygame.time.Clock()
+
+# connect to the PostgreSQL database
+db = psycopg2.connect(dbname="photon", user="student")
 
 FONT = pygame.font.SysFont("arial", 20)
 SMALL_FONT = pygame.font.SysFont("arial", 16)
@@ -68,8 +72,17 @@ def show_splash_screen(screen):
         clock.tick(60)
 
 def lookup_codename(player_id):
-    # TODO: replace this with a real database query later (psycopg2)
-    # for now it always returns None, meaning "not found, ask for a new codename"
+    cursor = db.cursor()
+
+    cursor.execute("SELECT codename FROM players WHERE id = %s", (int(player_id),))
+
+    result = cursor.fetchone()
+    cursor.close()
+
+    if result:
+        return result[0]
+
+    # meaning "not found, ask for a new codename"
     return None
 
 
