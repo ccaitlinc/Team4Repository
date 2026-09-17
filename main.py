@@ -155,12 +155,12 @@ def save_active_field():
     if field == "id":
         player_id = team_list[row]["id"]
         codename = lookup_codename(player_id)
+
         if codename:
             team_list[row]["codename"] = codename
-           # update_player(player_id, codename)
 
-           # if team_list[row]["equipment_id"] == "":
-            start_equipment_prompt(team, row)
+            if team_list[row]["equipment_id"] == "":
+                start_equipment_prompt(team, row)
         else:
             # no id typed in, or not found in db -> ask for a new codename next
             start_editing(team, row, "codename")
@@ -171,6 +171,8 @@ def save_active_field():
 
         if lookup_codename(player_id) is None:
             add_player(player_id, codename)
+        else:
+            update_player(player_id, codename)
 
         if team_list[row]["equipment_id"] == "":
             start_equipment_prompt(team, row)
