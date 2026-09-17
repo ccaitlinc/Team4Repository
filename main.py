@@ -158,9 +158,7 @@ def save_active_field():
 
         if codename:
             team_list[row]["codename"] = codename
-
-            if team_list[row]["equipment_id"] == "":
-                start_equipment_prompt(team, row)
+            start_editing(team, row, "codename")
         else:
             # no id typed in, or not found in db -> ask for a new codename next
             start_editing(team, row, "codename")
