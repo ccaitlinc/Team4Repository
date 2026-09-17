@@ -85,6 +85,21 @@ def lookup_codename(player_id):
     # meaning "not found, ask for a new codename"
     return None
 
+def add_player(player_id, codename):
+    cursor = db.cursor()
+
+    cursor.execute("INSERT INTO players (id, codename) VALUES (%s, %s)", (int(player_id), codename))
+
+    db.commit()
+    cursor.close()
+
+def update_player(player_id, codename):
+    cursor = db.cursor()
+
+    cursor.execute("UPDATE players SET codename = %s WHERE id = %s", (codename, int(player_id)))
+
+    db.commit()
+    cursor.close()
 
 def get_team_list(team):
     return red_team if team == "red" else green_team
@@ -142,13 +157,21 @@ def save_active_field():
         codename = lookup_codename(player_id)
         if codename:
             team_list[row]["codename"] = codename
-            if team_list[row]["equipment_id"] == "":
-                start_equipment_prompt(team, row)
+           # update_player(player_id, codename)
+
+           # if team_list[row]["equipment_id"] == "":
+            start_equipment_prompt(team, row)
         else:
             # no id typed in, or not found in db -> ask for a new codename next
             start_editing(team, row, "codename")
 
     elif field == "codename":
+        player_id = team_list[row]["id"]
+        codename = team_list[row]["codename"]
+
+        if lookup_codename(player_id) is None:
+            add_player(player_id, codename)
+
         if team_list[row]["equipment_id"] == "":
             start_equipment_prompt(team, row)
 
