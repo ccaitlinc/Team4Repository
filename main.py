@@ -1,6 +1,7 @@
 import pygame
 import sys
 import psycopg2
+import udp
 
 pygame.init()
 
@@ -194,7 +195,9 @@ def handle_key_input(event):
         if event.key == pygame.K_RETURN:
             team, row = equipment_target
             get_team_list(team)[row]["equipment_id"] = equipment_input.strip()
-            # TODO: broadcast this equipment_id over UDP port 7500 here, once sockets are set up
+            
+            if equipment_input.strip().isdigit():
+                udp.broadcast(equipment_input.strip())
             waiting_for_equipment = False
             equipment_target = None
             equipment_input = ""
