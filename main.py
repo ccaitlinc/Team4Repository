@@ -1,7 +1,19 @@
 import pygame
 import sys
+import argparse
 import psycopg2
 import udp
+from pathlib import Path
+
+parser = argparse.ArgumentParser(description="Photon Laser Tag player entry")
+parser.add_argument(
+    "--network-address",
+    default="127.0.0.1",
+    help="UDP destination IPv4 address (for example 192.168.1.255)",
+)
+args = parser.parse_args()
+if not udp.set_network_address(args.network_address):
+    parser.error("--network-address must be a valid IPv4 address")
 
 pygame.init()
 
@@ -53,7 +65,7 @@ equipment_target = None  # (team, row) tuple
 equipment_input = ""
 
 def show_splash_screen(screen):
-   logo = pygame.image.load("assets/logo.jpg").convert()
+   logo = pygame.image.load(Path(__file__).parent / "assets" / "logo.jpg").convert()
 
    logo = pygame.transform.smoothscale(logo, (500, 500))
 
@@ -300,4 +312,3 @@ while running:
 
 pygame.quit()
 sys.exit()
-
