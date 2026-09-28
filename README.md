@@ -26,7 +26,7 @@ To send equipment IDs to another IPv4 destination (such as the broadcast address
 .venv/bin/python main.py --network-address 192.168.1.255
 ```
 
-The default destination is `127.0.0.1`; UDP sends to port `7500`. The option accepts an IPv4 address and rejects malformed addresses before opening the window. Select an address reachable on the VM's network; `127.0.0.1` only reaches the same machine. The project does not currently listen on UDP port `7501`.
+The default destination is `127.0.0.1`; UDP sends to port `7500`. The option accepts an IPv4 address and rejects malformed addresses before opening the window. Select an address reachable on the VM's network; `127.0.0.1` only reaches the same machine. The app also listens for incoming UDP messages on port `7501` (accepting from any IP address). For now, anything received is printed to the terminal as `Received: <message>`; scoring and play-by-play handling will be added in a later sprint. The `--network-address` option only changes where equipment IDs are sent, not what the app listens on.
 
 ## Using the current player entry screen
 
