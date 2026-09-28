@@ -26,6 +26,29 @@ send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # Allow broadcasting 
 send_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
+# Receiving socket
+receive_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+# lets you restart the program quickly without "address already in use" errors
+receive_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+# "0.0.0.0" means accept from any IP address, per the project requirements
+receive_sock.bind(("0.0.0.0", RECEIVE_PORT))
+
+# non-blocking so it doesn't freeze the whole game waiting for data
+receive_sock.setblocking(False)
+
+
+def receive():
+    # Checks for one incoming message. Returns the decoded text if something
+    # arrived, or None if nothing is there right now.
+    # Meant to be called once per frame in the main game loop.
+    try:
+        data, addr = receive_sock.recvfrom(BUFFER_SIZE)
+        return data.decode(errors="ignore")
+    except BlockingIOError:
+        return None
+
 
 def set_network_address(new_address):
     # Switch to a different network address

@@ -299,6 +299,9 @@ while running:
             handle_mouse_click(event.pos)
       elif event.type == pygame.KEYDOWN:
             handle_key_input(event)
+   incoming = udp.receive()
+   if incoming:
+       print(f"Received: {incoming}")
 
   # screen.fill((0, 0, 0))
 
