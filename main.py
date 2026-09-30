@@ -64,6 +64,11 @@ waiting_for_equipment = False
 equipment_target = None  # (team, row) tuple
 equipment_input = ""
 
+# game start countdown timer
+countdown_active = False # tells program if countdown is currently running
+countdown_start_time = 0 # records when countdown started
+COUNTDOWN_SECONDS = 30 # duration of countdown = 30 seconds
+
 def show_splash_screen(screen):
    logo = pygame.image.load(Path(__file__).parent / "assets" / "logo.jpg").convert()
 
@@ -146,6 +151,21 @@ def stop_editing():
     active_field = None
     input_text = ""
 
+# countdown function to calculate/display
+def start_countdown():
+    global countdown_active, countdown_start_time
+
+    countdown_active = True
+    countdown_start_time = pygame.time.get_ticks()
+
+# function to calculate seconds left on timer
+def get_countdown_seconds():
+    elapsed = (pygame.time.get_ticks() - countdown_start_time) / 1000
+    remaining = COUNTDOWN_SECONDS - int(elapsed)
+
+    if remaining <= 0:
+        return 0
+    return remaining
 
 def start_equipment_prompt(team, row):
     global waiting_for_equipment, equipment_target, equipment_input
@@ -262,6 +282,18 @@ def draw_team_column(team, team_name, team_color):
         draw_cell(get_id_rect(team, row), id_text, is_id_active)
         draw_cell(get_name_rect(team, row), name_text, is_name_active)
 
+# make 30-second countdown display
+def draw_countdown_screen():
+    screen.fill((0, 0, 0))
+
+    title_surface = FONT.render("GAME STARTING", True, (255, 255, 255))
+    screen.blit(title_surface, (400, 250))
+
+    seconds = get_countdown_seconds()
+
+    countdown_surface = pygame.font.SysFont("arial", 100).render(str(seconds), True, (255, 255, 0))
+    countdown_rect = countdown_surface.get_rect(center=(WIDTH // 2, 400))
+    screen.blit(countdown_surface, countdown_rect)
 
 def draw_entry_screen():
     screen.fill((0, 0, 0))
