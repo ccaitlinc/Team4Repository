@@ -318,16 +318,15 @@ def draw_team_column(team, team_name, team_color):
 
 # make 30-second countdown display
 def draw_countdown_screen():
-    screen.fill((0, 0, 0))
-
-    title_surface = FONT.render("GAME STARTING", True, (255, 255, 255))
-    screen.blit(title_surface, (400, 250))
-
     seconds = get_countdown_seconds()
 
-    countdown_surface = pygame.font.SysFont("arial", 100).render(str(seconds), True, (255, 255, 0))
-    countdown_rect = countdown_surface.get_rect(center=(WIDTH // 2, 400))
-    screen.blit(countdown_surface, countdown_rect)
+    image_path = f"countdown_images/countdown{seconds}.jpg"
+    countdown_image = pygame.image.load(image_path).convert()
+
+    countdown_image = pygame.transform.smoothscale(countdown_image, (WIDTH, HEIGHT))
+
+    image_rect = countdown_image.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    screen.blit(countdown_image, image_rect)
 
 def draw_play_action_screen():
     screen.fill((0, 0, 0))
