@@ -327,11 +327,10 @@ def draw_countdown_screen():
 
 def draw_play_action_screen():
     screen.fill((0, 0, 0))
-    draw_team_column("red", "RED TEAM", (120, 0, 0))
-    draw_team_column("green", "GREEN TEAM", (0, 100, 0))
 
-    label = FONT.render("PLAY ACTION SCREEN (events coming soon)", True, (200, 200, 200))
-    screen.blit(label, (50, 650))
+    label = FONT.render("PLAY ACTION SCREEN (events coming soon)", True, (255, 255, 255))
+    label_rect = label.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    screen.blit(label, label_rect)
 
 def draw_entry_screen():
     screen.fill((0, 0, 0))
@@ -368,7 +367,7 @@ while running:
    for event in pygame.event.get():
       if event.type == pygame.QUIT:
          running = False
-      elif event.type == pygame.MOUSEBUTTONDOWN and not waiting_for_equipment:
+      elif event.type == pygame.MOUSEBUTTONDOWN:
             handle_mouse_click(event.pos)
       elif event.type == pygame.KEYDOWN:
             handle_key_input(event)
