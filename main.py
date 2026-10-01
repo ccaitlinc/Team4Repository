@@ -43,6 +43,8 @@ ROW_HEIGHT = 28
 NUMBER_WIDTH = 30
 ID_WIDTH = 100
 NAME_WIDTH = COLUMN_WIDTH - NUMBER_WIDTH - ID_WIDTH
+START_BUTTON_RECT = pygame.Rect(700, 630, 120, 40) 
+CLEAR_BUTTON_RECT = pygame.Rect(830, 630, 120, 40)
 
 
 def make_empty_team():
@@ -68,6 +70,9 @@ equipment_input = ""
 countdown_active = False # tells program if countdown is currently running
 countdown_start_time = 0 # records when countdown started
 COUNTDOWN_SECONDS = 30 # duration of countdown = 30 seconds
+
+#screen state variable 
+current_screen = "entry"  # "entry", "countdown", or "play_action"
 
 def show_splash_screen(screen):
    logo = pygame.image.load(Path(__file__).parent / "assets" / "logo.jpg").convert()
@@ -151,6 +156,17 @@ def stop_editing():
     active_field = None
     input_text = ""
 
+def start_game():
+    global current_screen
+    current_screen = "countdown"
+    start_countdown()
+
+
+def clear_all_entries():
+    global red_team, green_team
+    red_team = make_empty_team()
+    green_team = make_empty_team()
+
 # countdown function to calculate/display
 def start_countdown():
     global countdown_active, countdown_start_time
@@ -210,6 +226,13 @@ def save_active_field():
 
 
 def handle_mouse_click(pos):
+    if START_BUTTON_RECT.collidepoint(pos):
+        start_game()
+        return
+    if CLEAR_BUTTON_RECT.collidepoint(pos):
+        clear_all_entries()
+        return
+
     for team in ("red", "green"):
         for row in range(MAX_PLAYERS_PER_TEAM):
             if get_id_rect(team, row).collidepoint(pos):
@@ -223,6 +246,13 @@ def handle_mouse_click(pos):
 def handle_key_input(event):
     global input_text, equipment_input, waiting_for_equipment, equipment_target
 
+    if event.key == pygame.K_F5:
+        start_game()
+        return
+    if event.key == pygame.K_F12:
+        clear_all_entries()
+        return
+    
     if waiting_for_equipment:
         if event.key == pygame.K_RETURN:
             team, row = equipment_target
@@ -295,6 +325,14 @@ def draw_countdown_screen():
     countdown_rect = countdown_surface.get_rect(center=(WIDTH // 2, 400))
     screen.blit(countdown_surface, countdown_rect)
 
+def draw_play_action_screen():
+    screen.fill((0, 0, 0))
+    draw_team_column("red", "RED TEAM", (120, 0, 0))
+    draw_team_column("green", "GREEN TEAM", (0, 100, 0))
+
+    label = FONT.render("PLAY ACTION SCREEN (events coming soon)", True, (200, 200, 200))
+    screen.blit(label, (50, 650))
+
 def draw_entry_screen():
     screen.fill((0, 0, 0))
     draw_team_column("red", "RED TEAM", (120, 0, 0))
@@ -310,13 +348,16 @@ def draw_entry_screen():
         hint_surface = SMALL_FONT.render(hint, True, (200, 200, 200))
         screen.blit(hint_surface, (50, 590))
 
-    # reserved space for future sprint buttons (Start Game, Clear Entries, etc)
+    # buttons (Start Game, Clear Entries, etc)
     pygame.draw.rect(screen, (40, 40, 40), (50, 620, 900, 60))
-    future_label = SMALL_FONT.render(
-        "F5: Start Game   |   F12: Clear All Entries   (coming in a later sprint)",
-        True, (150, 150, 150)
-    )
-    screen.blit(future_label, (60, 645))
+    pygame.draw.rect(screen, (0, 120, 0), START_BUTTON_RECT)
+    start_label = SMALL_FONT.render("Start (F5)", True, (255, 255, 255))
+    screen.blit(start_label, (START_BUTTON_RECT.x + 10, START_BUTTON_RECT.y + 10))
+
+    pygame.draw.rect(screen, (120, 0, 0), CLEAR_BUTTON_RECT)
+    clear_label = SMALL_FONT.render("Clear (F12)", True, (255, 255, 255))
+    screen.blit(clear_label, (CLEAR_BUTTON_RECT.x + 5, CLEAR_BUTTON_RECT.y + 10))
+
 
 
 show_splash_screen(screen)
@@ -335,11 +376,16 @@ while running:
    if incoming:
        print(f"Received: {incoming}")
 
-  # screen.fill((0, 0, 0))
+   if current_screen == "entry":
+       draw_entry_screen()
+   elif current_screen == "countdown":
+       draw_countdown_screen()
+       if get_countdown_seconds() == 0:
+           current_screen = "play_action"
+   elif current_screen == "play_action":
+       draw_play_action_screen()
 
-   draw_entry_screen()
    pygame.display.flip()
-   
    clock.tick(60)
 
 
