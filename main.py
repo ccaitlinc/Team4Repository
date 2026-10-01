@@ -163,9 +163,13 @@ def start_game():
 
 
 def clear_all_entries():
-    global red_team, green_team
+    global red_team, green_team, waiting_for_equipment, equipment_target, equipment_input
     red_team = make_empty_team()
     green_team = make_empty_team()
+    stop_editing()
+    waiting_for_equipment = False
+    equipment_target = None
+    equipment_input = ""
 
 # countdown function to calculate/display
 def start_countdown():
