@@ -288,9 +288,6 @@ def handle_key_input(event):
     if event.key == pygame.K_F12:
         clear_all_entries()
         return
-    if event.key == pygame.K_F2 and not waiting_for_equipment:
-        start_network_edit()
-        return
 
     if editing_network:
         if event.key == pygame.K_RETURN:
@@ -502,8 +499,8 @@ def draw_entry_screen():
         screen.blit(message_surface, (60, 652))
 
     pygame.draw.rect(screen, (0, 70, 140), NETWORK_BUTTON_RECT)
-    network_button_label = SMALL_FONT.render("Network (F2)", True, (255, 255, 255))
-    screen.blit(network_button_label, (NETWORK_BUTTON_RECT.x + 5, NETWORK_BUTTON_RECT.y + 10))
+    network_button_label = SMALL_FONT.render("Network", True, (255, 255, 255))
+    screen.blit(network_button_label, (NETWORK_BUTTON_RECT.x + 10, NETWORK_BUTTON_RECT.y + 10))
     pygame.draw.rect(screen, (0, 120, 0), START_BUTTON_RECT)
     start_label = SMALL_FONT.render("Start (F5)", True, (255, 255, 255))
     screen.blit(start_label, (START_BUTTON_RECT.x + 10, START_BUTTON_RECT.y + 10))
