@@ -45,6 +45,7 @@ ID_WIDTH = 100
 NAME_WIDTH = COLUMN_WIDTH - NUMBER_WIDTH - ID_WIDTH
 START_BUTTON_RECT = pygame.Rect(700, 630, 120, 40) 
 CLEAR_BUTTON_RECT = pygame.Rect(830, 630, 120, 40)
+NETWORK_BUTTON_RECT = pygame.Rect(570, 630, 120, 40)
 
 
 def make_empty_team():
@@ -70,6 +71,12 @@ equipment_input = ""
 countdown_active = False # tells program if countdown is currently running
 countdown_start_time = 0 # records when countdown started
 COUNTDOWN_SECONDS = 30 # duration of countdown = 30 seconds
+
+# changing the UDP network address from inside the app
+editing_network = False                 
+network_input = ""                      
+network_message = ""                    
+network_message_color = (200, 200, 200)
 
 #screen state variable 
 current_screen = "entry"  # "entry", "countdown", or "play_action"
@@ -171,7 +178,23 @@ def clear_all_entries():
     equipment_target = None
     equipment_input = ""
 
-# countdown function to calculate/display
+def start_network_edit():
+    global editing_network, network_input
+    stop_editing()                      
+    editing_network = True
+    network_input = udp.network_address  
+
+
+def save_network_address():
+    global editing_network, network_message, network_message_color
+    if udp.set_network_address(network_input):
+        editing_network = False
+        network_message = f"Network address set to {udp.network_address}"
+        network_message_color = (0, 200, 0)
+    else:
+        network_message = f"'{network_input}' is not a valid address (example: 127.0.0.1)"
+        network_message_color = (255, 80, 80)
+
 def start_countdown():
     global countdown_active, countdown_start_time
 
@@ -230,11 +253,19 @@ def save_active_field():
 
 
 def handle_mouse_click(pos):
+    global editing_network
+    if editing_network:
+        editing_network = False  # clicking anywhere cancels an unsaved network change
+
     if START_BUTTON_RECT.collidepoint(pos):
         start_game()
         return
     if CLEAR_BUTTON_RECT.collidepoint(pos):
         clear_all_entries()
+        return
+    if NETWORK_BUTTON_RECT.collidepoint(pos):
+        if not waiting_for_equipment:
+            start_network_edit()
         return
 
     for team in ("red", "green"):
@@ -249,12 +280,27 @@ def handle_mouse_click(pos):
 
 def handle_key_input(event):
     global input_text, equipment_input, waiting_for_equipment, equipment_target
+    global editing_network, network_input
 
     if event.key == pygame.K_F5:
         start_game()
         return
     if event.key == pygame.K_F12:
         clear_all_entries()
+        return
+    if event.key == pygame.K_F2 and not waiting_for_equipment:
+        start_network_edit()
+        return
+
+    if editing_network:
+        if event.key == pygame.K_RETURN:
+            save_network_address()
+        elif event.key == pygame.K_ESCAPE:
+            editing_network = False  # cancel, keep the old address
+        elif event.key == pygame.K_BACKSPACE:
+            network_input = network_input[:-1]
+        elif (event.unicode.isdigit() or event.unicode == ".") and len(network_input) < 15:
+            network_input += event.unicode  # only digits and dots, max 15 chars 
         return
     
     if waiting_for_equipment:
@@ -431,7 +477,11 @@ def draw_entry_screen():
     draw_team_column("red", "RED TEAM", (120, 0, 0))
     draw_team_column("green", "GREEN TEAM", (0, 100, 0))
 
-    if waiting_for_equipment:
+    if editing_network:
+        prompt = "Network address (Enter to save, Esc to cancel): " + network_input
+        prompt_surface = FONT.render(prompt, True, (255, 255, 0))
+        screen.blit(prompt_surface, (50, 590))
+    elif waiting_for_equipment:
         team, row = equipment_target
         prompt = f"Enter Equipment ID for {team.upper()} row {row}: " + equipment_input
         prompt_surface = FONT.render(prompt, True, (255, 255, 0))
@@ -443,6 +493,17 @@ def draw_entry_screen():
 
     # buttons (Start Game, Clear Entries, etc)
     pygame.draw.rect(screen, (40, 40, 40), (50, 620, 900, 60))
+
+    # current network address (always visible) and the result of the last change
+    network_label = SMALL_FONT.render(f"Network: {udp.network_address}", True, (255, 255, 255))
+    screen.blit(network_label, (60, 630))
+    if network_message:
+        message_surface = SMALL_FONT.render(network_message, True, network_message_color)
+        screen.blit(message_surface, (60, 652))
+
+    pygame.draw.rect(screen, (0, 70, 140), NETWORK_BUTTON_RECT)
+    network_button_label = SMALL_FONT.render("Network (F2)", True, (255, 255, 255))
+    screen.blit(network_button_label, (NETWORK_BUTTON_RECT.x + 5, NETWORK_BUTTON_RECT.y + 10))
     pygame.draw.rect(screen, (0, 120, 0), START_BUTTON_RECT)
     start_label = SMALL_FONT.render("Start (F5)", True, (255, 255, 255))
     screen.blit(start_label, (START_BUTTON_RECT.x + 10, START_BUTTON_RECT.y + 10))
