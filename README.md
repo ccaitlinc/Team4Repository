@@ -2,11 +2,10 @@
 
 ## Software needed on the Debian VM
 
-- Python 3 with `venv` and `pip` (`python3`, `python3-venv`); a desktop session that can display a Pygame window.
+- Python 3 with `venv` and `pip` (`python3`, `python3-venv`, `python3-pip`), installed automatically by `install.sh`; a desktop session that can display a Pygame window.
 - PostgreSQL already installed and configured, with database `photon`, table `players`, and local database role `student`. **Do not recreate or change the database schema.** The app currently uses `psycopg2.connect(dbname="photon", user="student")` and expects `players.id` and `players.codename`.
 - Python packages pinned in `requirements.txt`: `pygame==2.6.1` and `psycopg2-binary==2.9.12`. The install script installs these into a local virtual environment.
-- Git to download the project. For a Debian VM missing prerequisites: `sudo apt update && sudo apt install git python3 python3-venv`.
-
+- Git to download the project (also installed by `install.sh`). If Git is missing before cloning: `sudo apt update && sudo apt install git`.
 ## Install and run
 
 Open a terminal inside the VM's graphical desktop:
@@ -18,8 +17,10 @@ bash install.sh
 .venv/bin/python main.py
 ```
 
+`install.sh` installs the system packages `python3`, `python3-venv`, `python3-pip` and `git` with `apt-get` (it uses `sudo`, so enter the VM password if asked), creates a fresh `.venv`, installs `requirements.txt`, and checks that `pygame` and `psycopg2` load.
 The installer requires an available Python package index to download the two packages. It does not install or modify PostgreSQL. Run the app as the VM's `student` user so its existing local PostgreSQL authentication works. If the database connection fails, verify that PostgreSQL is running and that this user can access the existing `photon` database and `players` table; use the instructor's VM setup rather than changing the schema.
 
+**Changing the network address in the app:** the current address is shown at the bottom of the player entry screen (`Network: 127.0.0.1`). Click the **Network** button, type the new IPv4 address, and press Enter to save (Esc cancels). Invalid addresses are rejected with a red message.
 To send equipment IDs to another IPv4 destination (such as the broadcast address for the selected LAN), start with:
 
 ```bash
@@ -35,6 +36,8 @@ The default destination is `127.0.0.1`; UDP sends to port `7500`. The option acc
 3. The app looks up the codename. Type or edit the codename and press Enter; the app inserts a new player or updates the existing codename in the `players` table.
 4. Type a numeric equipment ID in the prompt at the bottom and press Enter. The app sends that integer to the selected network address on UDP port `7500`.
 5. Repeat for up to 15 players on each team. Close the window to exit. Escape cancels an active player field edit.
+6. Press F12 or click **Clear (F12)** to clear all player entries.
+7. Press F5 or click **Start (F5)** to start the game. A 30-second countdown plays, then the play action display shows each team's players.
 
 ## Check UDP transmission
 
