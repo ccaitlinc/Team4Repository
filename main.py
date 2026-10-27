@@ -254,6 +254,9 @@ def save_active_field():
 
 def handle_mouse_click(pos):
     global editing_network
+    if current_screen != "entry":
+        return # handle the back-to-entry button before this line
+    
     if editing_network:
         editing_network = False  # clicking anywhere cancels an unsaved network change
 
@@ -282,6 +285,9 @@ def handle_key_input(event):
     global input_text, equipment_input, waiting_for_equipment, equipment_target
     global editing_network, network_input
 
+    if current_screen != "entry":
+        return
+    
     if event.key == pygame.K_F5:
         start_game()
         return
