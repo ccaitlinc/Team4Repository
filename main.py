@@ -30,6 +30,8 @@ db = psycopg2.connect(dbname="photon", user="student")
 
 FONT = pygame.font.SysFont("arial", 20)
 SMALL_FONT = pygame.font.SysFont("arial", 16)
+BASE_ICON = pygame.image.load(Path(__file__).parent / "assets" / "baseicon.jpg").convert()
+BASE_ICON = pygame.transform.smoothscale(BASE_ICON, (20, 20))
 
 MAX_PLAYERS_PER_TEAM = 15
 
@@ -164,6 +166,10 @@ def stop_editing():
     input_text = ""
 
 def start_game():
+    # TEMP TEST: removing--------------------------------------------------
+    for player in red_team[:2] + green_team[:1]:
+        player["has_base"] = True
+    #-----------------------------------------------------------------------
     global current_screen
     current_screen = "countdown"
     start_countdown()
@@ -442,13 +448,19 @@ def draw_play_action_screen():
                     border_radius=3
                 )
 
+            # Base icon (stays for the rest of the game once a player has it)
+            name_x = x + 20
+            if player["has_base"]:
+                screen.blit(BASE_ICON, (x + 20, row_y))
+                name_x = x + 45  # shift the name right to make room
+
             # Player number and name
             player_text = SMALL_FONT.render(
                 f"{index + 1}.  {codename}",
                 True,
                 (255, 255, 255)
             )
-            screen.blit(player_text, (x + 20, row_y))
+            screen.blit(player_text, (name_x, row_y))
 
             # Player ID
             id_text = SMALL_FONT.render(
