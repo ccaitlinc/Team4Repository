@@ -166,10 +166,6 @@ def stop_editing():
     input_text = ""
 
 def start_game():
-    # TEMP TEST: removing--------------------------------------------------
-    for player in red_team[:2] + green_team[:1]:
-        player["has_base"] = True
-    #-----------------------------------------------------------------------
     global current_screen
     current_screen = "countdown"
     start_countdown()
