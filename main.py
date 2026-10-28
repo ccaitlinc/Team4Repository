@@ -50,7 +50,7 @@ NETWORK_BUTTON_RECT = pygame.Rect(570, 630, 120, 40)
 
 def make_empty_team():
     # 15 empty player slots, so row 0 through row 14 always exist and can be clicked
-    return [{"id": "", "codename": "", "equipment_id": ""} for _ in range(MAX_PLAYERS_PER_TEAM)]
+    return [{"id": "", "codename": "", "equipment_id": "", "score": 0, "has_base": False} for _ in range(MAX_PLAYERS_PER_TEAM)]
 
 
 red_team = make_empty_team()
