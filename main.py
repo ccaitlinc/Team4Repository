@@ -140,17 +140,22 @@ def find_player_by_equipment_id(equipment_id):
     """Return (team_name, player) for an equipment ID, or (None, None)."""
     equipment_id = str(equipment_id).strip()
 
+    if not equipment_id:
+        return None, None
+
     for team_name in ("red", "green"):
         for player in get_team_list(team_name):
-            if player["equipment_id"].strip() == equipment_id and equipment_id:
+            player_equipment_id = str(player.get("equipment_id", "")).strip()
+
+            if player_equipment_id == equipment_id:
                 return team_name, player
 
     return None, None
 
-# hit-processing function for freindly fire
+# hit-processing function for freindly fire and base scoring
 def process_hit(message):
     """Process a player hit and apply freindly-fire penalties and respond over UDP"""
-    parts = message.rstrip("\0").strip().split(":")
+    parts = str(message).rstrip("\0").strip().split(":")
 
     if len(parts) != 2:
         print(f"Ignoring invalid hit message: {message}")
@@ -158,24 +163,45 @@ def process_hit(message):
 
     shooter_id, target_id = parts[0].strip(), parts[1].strip()
 
-    # base codes are handled separately from player hits
-    if target_id in ("43", "53"):
-        udp.broadcast(shooter_id) # send back to shooter to confirm hit
-        print(f"Base hit reported by equipment {shooter_id}")
+    # find the player who fired before handling the target
+    shooter_team, shooter = find_player_by_equipment_id(shooter_id)
+
+    if shooter is None:
+        print(f"Could not find shooter {shooter_id}")
         return
 
-    shooter_team, shooter = find_player_by_equipment_id(shooter_id)
+    # base codes are handled separately from player hits
+    if target_id in ("43", "53"):
+        if target_id == "43" and shooter_team == "red":
+            shooter["score"] += 100
+            shooter["has_base"] = True
+            print (f"{shooter['codename']} scored on the green base!")
+
+        elif target_id == "53" and shooter_team == "green":
+            shooter["score"] += 100
+            shooter["has_base"] = True
+            print(f"{shooter['codename']} scored on the red base!")
+
+        else:
+            print(f"{shooter['codename']} hit base code {target_id}")
+
+        # acknowledge the base hit
+        udp.broadcast(shooter_id) # send back to shooter to confirm hit
+        return
+
+    # for player hits, find the target
     target_team, target = find_player_by_equipment_id(target_id)
 
-    if shooter is None or target is None:
-        print(f"Could not find shooter {shooter_id} or target {target_id}")
+    if target is None:
+        print(f"Could not find target {target_id}")
         return
 
     if shooter_team == target_team:
+        # friendly-fire so both palyers lose 10 points
         shooter["score"] -= 10
         target["score"] -= 10
 
-        # traffic generator expects two responses for freindly fire
+        # send both equipment IDs (traffic generator expects two messages)
         udp.broadcast(shooter_id)
         udp.broadcast(target_id)
 
@@ -183,7 +209,7 @@ def process_hit(message):
     else:
         # normal hit so acknowledge equipment ID of the player hit
         udp.broadcast(target_id)
-        print(f"{shooter['codename']} hit opponent " f"{target['codename']}")
+        print(f"{shooter['codename']} hit opponent {target['codename']}")
 
 def get_id_rect(team, row):
     x = TEAM_X[team] + NUMBER_WIDTH
@@ -507,13 +533,22 @@ def draw_play_action_screen():
             )
             screen.blit(player_text, (name_x, row_y))
 
+            # Player score
+            score = player["score"]
+            score_text = SMALL_FONT.render(
+                f"Score: {score}",
+                True,
+                (255, 215, 0)
+            )
+            screen.blit(score_text, (x + 230, row_y))
+
             # Player ID
             id_text = SMALL_FONT.render(
                 f"ID: {player_id}",
                 True,
                 (180, 180, 180)
             )
-            screen.blit(id_text, (x + 275, row_y))
+            screen.blit(id_text, (x + 320, row_y))
 
         # Empty team 
         if not registered_players:
