@@ -329,15 +329,20 @@ def draw_countdown_screen():
     screen.blit(countdown_image, image_rect)
 
 
+
 def draw_play_action_screen():
     screen.fill((10, 10, 10))
 
     title_font = pygame.font.SysFont("arial", 40, bold=True)
     title = title_font.render("PHOTON LASER TAG", True, (255, 255, 255))
-    screen.blit(title, title.get_rect(center=(WIDTH // 2, 45)))
+    screen.blit(title, title.get_rect(center=(WIDTH // 2, 35)))
 
     subtitle = FONT.render("PLAY ACTION DISPLAY", True, (190, 190, 190))
-    screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 90)))
+    screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 78)))
+
+    # Game timer placeholder
+    timer_text = SMALL_FONT.render("GAME TIMER: --:--", True, (255, 255, 255))
+    screen.blit(timer_text, timer_text.get_rect(center=(WIDTH // 2, 105)))
 
     teams = [
         ("red", "RED TEAM", (150, 0, 0), 50),
@@ -347,20 +352,18 @@ def draw_play_action_screen():
     for team_key, team_name, team_color, x in teams:
         team_players = get_team_list(team_key)
 
-        # Panel
-        panel = pygame.Rect(x, 130, 400, 480)
+        # Panel - shortened to make room for event log
+        panel = pygame.Rect(x, 130, 400, 340)
         pygame.draw.rect(screen, (30, 30, 30), panel, border_radius=8)
         pygame.draw.rect(screen, team_color, panel, 3, border_radius=8)
 
         # Heading
-        header = pygame.Rect(x, 130, 400, 55)
+        header = pygame.Rect(x, 130, 400, 45)
         pygame.draw.rect(screen, team_color, header, border_radius=6)
 
         heading = title_font.render(team_name, True, (255, 255, 255))
-        heading = pygame.transform.smoothscale(
-            heading, (230, 40)
-        )
-        screen.blit(heading, (x + 85, 138))
+        heading = pygame.transform.smoothscale(heading, (230, 35))
+        screen.blit(heading, (x + 85, 135))
 
         # Display players who have an ID and codename
         registered_players = [
@@ -375,11 +378,17 @@ def draw_play_action_screen():
             True,
             (200, 200, 200)
         )
-        screen.blit(count_label, (x + 15, 195))
+        screen.blit(count_label, (x + 15, 181))
 
-        #  Registered players
+        # Score column heading
+        score_heading = SMALL_FONT.render(
+            "SCORE", True, (255, 255, 255)
+        )
+        screen.blit(score_heading, (x + 325, 181))
+
+        # Registered players
         for index, player in enumerate(registered_players):
-            row_y = 230 + index * 24
+            row_y = 205 + index * 15
 
             player_id = str(player["id"])
             codename = str(player["codename"])
@@ -389,17 +398,17 @@ def draw_play_action_screen():
                 pygame.draw.rect(
                     screen,
                     (45, 45, 45),
-                    (x + 10, row_y - 2, 380, 23),
+                    (x + 10, row_y - 1, 380, 15),
                     border_radius=3
                 )
 
             # Player number and name
             player_text = SMALL_FONT.render(
-                f"{index + 1}.  {codename}",
+                f"{index + 1}. {codename[:14]}",
                 True,
                 (255, 255, 255)
             )
-            screen.blit(player_text, (x + 20, row_y))
+            screen.blit(player_text, (x + 15, row_y))
 
             # Player ID
             id_text = SMALL_FONT.render(
@@ -407,23 +416,77 @@ def draw_play_action_screen():
                 True,
                 (180, 180, 180)
             )
-            screen.blit(id_text, (x + 275, row_y))
+            screen.blit(id_text, (x + 210, row_y))
 
-        # Empty team 
+            # Individual score 
+            score_text = SMALL_FONT.render(
+                "0", True, (255, 255, 255)
+            )
+            screen.blit(score_text, (x + 345, row_y))
+
+        # Empty team
         if not registered_players:
             empty_label = FONT.render(
                 "No players registered",
                 True,
                 (150, 150, 150)
             )
-            screen.blit(empty_label, (x + 90, 300))
+            screen.blit(empty_label, (x + 90, 260))
 
+        # Team score total 
+        pygame.draw.line(
+            screen, team_color,
+            (x + 10, 444), (x + 390, 444), 2
+        )
+
+        total_label = SMALL_FONT.render(
+            "TEAM SCORE: 0",
+            True,
+            (255, 255, 255)
+        )
+        screen.blit(total_label, (x + 15, 450))
+
+    # Game Event Log panel
+    log_panel = pygame.Rect(50, 485, 900, 160)
+    pygame.draw.rect(
+        screen, (30, 30, 30), log_panel, border_radius=8
+    )
+    pygame.draw.rect(
+        screen, (80, 80, 130), log_panel, 3, border_radius=8
+    )
+
+    # Event log heading
+    log_header = pygame.Rect(50, 485, 900, 38)
+    pygame.draw.rect(
+        screen, (45, 45, 85), log_header, border_radius=6
+    )
+
+    log_title = FONT.render(
+        "GAME EVENT LOG",
+        True,
+        (255, 255, 255)
+    )
+    screen.blit(log_title, (x if False else 65, 493))
+
+    # Placeholder for future game events
+    log_message = SMALL_FONT.render(
+        "Waiting for game events...",
+        True,
+        (180, 180, 180)
+    )
+    screen.blit(log_message, (70, 540))
+
+    # Footer
     footer = SMALL_FONT.render(
         "Game in progress - waiting for events",
         True,
         (180, 180, 180)
     )
-    screen.blit(footer, footer.get_rect(center=(WIDTH // 2, 655)))
+    screen.blit(
+        footer,
+        footer.get_rect(center=(WIDTH // 2, 670))
+    )
+
 
 
 def draw_entry_screen():
