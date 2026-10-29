@@ -30,6 +30,8 @@ db = psycopg2.connect(dbname="photon", user="student")
 
 FONT = pygame.font.SysFont("arial", 20)
 SMALL_FONT = pygame.font.SysFont("arial", 16)
+BASE_ICON = pygame.image.load(Path(__file__).parent / "assets" / "baseicon.jpg").convert()
+BASE_ICON = pygame.transform.smoothscale(BASE_ICON, (20, 20))
 
 MAX_PLAYERS_PER_TEAM = 15
 
@@ -45,11 +47,12 @@ ID_WIDTH = 100
 NAME_WIDTH = COLUMN_WIDTH - NUMBER_WIDTH - ID_WIDTH
 START_BUTTON_RECT = pygame.Rect(700, 630, 120, 40) 
 CLEAR_BUTTON_RECT = pygame.Rect(830, 630, 120, 40)
+NETWORK_BUTTON_RECT = pygame.Rect(570, 630, 120, 40)
 
 
 def make_empty_team():
     # 15 empty player slots, so row 0 through row 14 always exist and can be clicked
-    return [{"id": "", "codename": "", "equipment_id": "", "score": 0}for _ in range(MAX_PLAYERS_PER_TEAM)]
+    return [{"id": "", "codename": "", "equipment_id": "", "score": 0, "has_base": False,}for _ in range(MAX_PLAYERS_PER_TEAM)]
 
 red_team = make_empty_team()
 green_team = make_empty_team()
@@ -69,6 +72,12 @@ equipment_input = ""
 countdown_active = False # tells program if countdown is currently running
 countdown_start_time = 0 # records when countdown started
 COUNTDOWN_SECONDS = 30 # duration of countdown = 30 seconds
+
+# changing the UDP network address from inside the app
+editing_network = False                 
+network_input = ""                      
+network_message = ""                    
+network_message_color = (200, 200, 200)
 
 #screen state variable 
 current_screen = "entry"  # "entry", "countdown", or "play_action"
@@ -219,7 +228,23 @@ def clear_all_entries():
     equipment_target = None
     equipment_input = ""
 
-# countdown function to calculate/display
+def start_network_edit():
+    global editing_network, network_input
+    stop_editing()                      
+    editing_network = True
+    network_input = udp.network_address  
+
+
+def save_network_address():
+    global editing_network, network_message, network_message_color
+    if udp.set_network_address(network_input):
+        editing_network = False
+        network_message = f"Network address set to {udp.network_address}"
+        network_message_color = (0, 200, 0)
+    else:
+        network_message = f"'{network_input}' is not a valid address (example: 127.0.0.1)"
+        network_message_color = (255, 80, 80)
+
 def start_countdown():
     global countdown_active, countdown_start_time
 
@@ -278,11 +303,22 @@ def save_active_field():
 
 
 def handle_mouse_click(pos):
+    global editing_network
+    if current_screen != "entry":
+        return # handle the back-to-entry button before this line
+    
+    if editing_network:
+        editing_network = False  # clicking anywhere cancels an unsaved network change
+
     if START_BUTTON_RECT.collidepoint(pos):
         start_game()
         return
     if CLEAR_BUTTON_RECT.collidepoint(pos):
         clear_all_entries()
+        return
+    if NETWORK_BUTTON_RECT.collidepoint(pos):
+        if not waiting_for_equipment:
+            start_network_edit()
         return
 
     for team in ("red", "green"):
@@ -297,12 +333,27 @@ def handle_mouse_click(pos):
 
 def handle_key_input(event):
     global input_text, equipment_input, waiting_for_equipment, equipment_target
+    global editing_network, network_input
 
+    if current_screen != "entry":
+        return
+    
     if event.key == pygame.K_F5:
         start_game()
         return
     if event.key == pygame.K_F12:
         clear_all_entries()
+        return
+
+    if editing_network:
+        if event.key == pygame.K_RETURN:
+            save_network_address()
+        elif event.key == pygame.K_ESCAPE:
+            editing_network = False  # cancel, keep the old address
+        elif event.key == pygame.K_BACKSPACE:
+            network_input = network_input[:-1]
+        elif (event.unicode.isdigit() or event.unicode == ".") and len(network_input) < 15:
+            network_input += event.unicode  # only digits and dots, max 15 chars 
         return
     
     if waiting_for_equipment:
@@ -376,29 +427,120 @@ def draw_countdown_screen():
     image_rect = countdown_image.get_rect(center=(WIDTH // 2, HEIGHT // 2))
     screen.blit(countdown_image, image_rect)
 
+
+
 def draw_play_action_screen():
-    screen.fill((0, 0, 0))
+    screen.fill((10, 10, 10))
 
-    title = FONT.render("LASER TAG - GAME IN PROCESS", True, (255, 255, 255))
-    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 20))
+    title_font = pygame.font.SysFont("arial", 40, bold=True)
+    title = title_font.render("PHOTON LASER TAG", True, (255, 255, 255))
+    screen.blit(title, title.get_rect(center=(WIDTH // 2, 45)))
 
-    for team_name, team_color, x in (("red", (255, 100, 100), 50), ("green", (100, 255, 100), 520),):
-        team_title = FONT.render(f"{team_name.upper()} TEAM", True, team_color)
-        screen.blit(team_title, (x, 70))
+    subtitle = FONT.render("PLAY ACTION DISPLAY", True, (190, 190, 190))
+    screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 90)))
 
-        y = 110
-        for player in get_team_list(team_name):
-            if player["equipment_id"].strip():
-                label = SMALL_FONT.render(f"{player['codename']} (ID {player['equipment_id']}): " f"{player['score']} pts", True, (255, 255, 255),)
-                screen.blit(label, (x, y))
-                y+= 28
+    teams = [
+        ("red", "RED TEAM", (150, 0, 0), 50),
+        ("green", "GREEN TEAM", (0, 120, 0), 550)
+    ]
+
+    for team_key, team_name, team_color, x in teams:
+        team_players = get_team_list(team_key)
+
+        # Panel
+        panel = pygame.Rect(x, 130, 400, 480)
+        pygame.draw.rect(screen, (30, 30, 30), panel, border_radius=8)
+        pygame.draw.rect(screen, team_color, panel, 3, border_radius=8)
+
+        # Heading
+        header = pygame.Rect(x, 130, 400, 55)
+        pygame.draw.rect(screen, team_color, header, border_radius=6)
+
+        heading = title_font.render(team_name, True, (255, 255, 255))
+        heading = pygame.transform.smoothscale(
+            heading, (230, 40)
+        )
+        screen.blit(heading, (x + 85, 138))
+
+        # Display players who have an ID and codename
+        registered_players = [
+            player for player in team_players
+            if str(player["id"]).strip()
+            and str(player["codename"]).strip()
+        ]
+
+        # Player count
+        count_label = SMALL_FONT.render(
+            f"Players: {len(registered_players)}/{MAX_PLAYERS_PER_TEAM}",
+            True,
+            (200, 200, 200)
+        )
+        screen.blit(count_label, (x + 15, 195))
+
+        #  Registered players
+        for index, player in enumerate(registered_players):
+            row_y = 230 + index * 24
+
+            player_id = str(player["id"])
+            codename = str(player["codename"])
+
+            # Alternating backgrounds
+            if index % 2 == 0:
+                pygame.draw.rect(
+                    screen,
+                    (45, 45, 45),
+                    (x + 10, row_y - 2, 380, 23),
+                    border_radius=3
+                )
+
+            # Base icon (stays for the rest of the game once a player has it)
+            name_x = x + 20
+            if player["has_base"]:
+                screen.blit(BASE_ICON, (x + 20, row_y))
+                name_x = x + 45  # shift the name right to make room
+
+            # Player number and name
+            player_text = SMALL_FONT.render(
+                f"{index + 1}.  {codename}",
+                True,
+                (255, 255, 255)
+            )
+            screen.blit(player_text, (name_x, row_y))
+
+            # Player ID
+            id_text = SMALL_FONT.render(
+                f"ID: {player_id}",
+                True,
+                (180, 180, 180)
+            )
+            screen.blit(id_text, (x + 275, row_y))
+
+        # Empty team 
+        if not registered_players:
+            empty_label = FONT.render(
+                "No players registered",
+                True,
+                (150, 150, 150)
+            )
+            screen.blit(empty_label, (x + 90, 300))
+
+    footer = SMALL_FONT.render(
+        "Game in progress - waiting for events",
+        True,
+        (180, 180, 180)
+    )
+    screen.blit(footer, footer.get_rect(center=(WIDTH // 2, 655)))
 
 def draw_entry_screen():
     screen.fill((0, 0, 0))
     draw_team_column("red", "RED TEAM", (120, 0, 0))
     draw_team_column("green", "GREEN TEAM", (0, 100, 0))
 
-    if waiting_for_equipment:
+    if editing_network:
+        prompt = "Network address (Enter to save, Esc to cancel): " + network_input
+        prompt_surface = FONT.render(prompt, True, (255, 255, 0))
+        screen.blit(prompt_surface, (50, 590))
+    elif waiting_for_equipment:
         team, row = equipment_target
         prompt = f"Enter Equipment ID for {team.upper()} row {row}: " + equipment_input
         prompt_surface = FONT.render(prompt, True, (255, 255, 0))
@@ -410,6 +552,17 @@ def draw_entry_screen():
 
     # buttons (Start Game, Clear Entries, etc)
     pygame.draw.rect(screen, (40, 40, 40), (50, 620, 900, 60))
+
+    # current network address (always visible) and the result of the last change
+    network_label = SMALL_FONT.render(f"Network: {udp.network_address}", True, (255, 255, 255))
+    screen.blit(network_label, (60, 630))
+    if network_message:
+        message_surface = SMALL_FONT.render(network_message, True, network_message_color)
+        screen.blit(message_surface, (60, 652))
+
+    pygame.draw.rect(screen, (0, 70, 140), NETWORK_BUTTON_RECT)
+    network_button_label = SMALL_FONT.render("Network", True, (255, 255, 255))
+    screen.blit(network_button_label, (NETWORK_BUTTON_RECT.x + 10, NETWORK_BUTTON_RECT.y + 10))
     pygame.draw.rect(screen, (0, 120, 0), START_BUTTON_RECT)
     start_label = SMALL_FONT.render("Start (F5)", True, (255, 255, 255))
     screen.blit(start_label, (START_BUTTON_RECT.x + 10, START_BUTTON_RECT.y + 10))
