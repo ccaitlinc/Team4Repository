@@ -49,8 +49,7 @@ CLEAR_BUTTON_RECT = pygame.Rect(830, 630, 120, 40)
 
 def make_empty_team():
     # 15 empty player slots, so row 0 through row 14 always exist and can be clicked
-    return [{"id": "", "codename": "", "equipment_id": ""} for _ in range(MAX_PLAYERS_PER_TEAM)]
-
+    return [{"id": "", "codename": "", "equipment_id": "", "score": 0}for _ in range(MAX_PLAYERS_PER_TEAM)]
 
 red_team = make_empty_team()
 green_team = make_empty_team()
@@ -127,6 +126,55 @@ def update_player(player_id, codename):
 def get_team_list(team):
     return red_team if team == "red" else green_team
 
+# player lookup function for equipment ID
+def find_player_by_equipment_id(equipment_id):
+    """Return (team_name, player) for an equipment ID, or (None, None)."""
+    equipment_id = str(equipment_id).strip()
+
+    for team_name in ("red", "green"):
+        for player in get_team_list(team_name):
+            if player["equipment_id"].strip() == equipment_id and equipment_id:
+                return team_name, player
+
+    return None, None
+
+# hit-processing function for freindly fire
+def process_hit(message):
+    """Process a player hit and apply freindly-fire penalties and respond over UDP"""
+    parts = message.rstrip("\0").strip().split(":")
+
+    if len(parts) != 2:
+        print(f"Ignoring invalid hit message: {message}")
+        return
+
+    shooter_id, target_id = parts[0].strip(), parts[1].strip()
+
+    # base codes are handled separately from player hits
+    if target_id in ("43", "53"):
+        udp.broadcast(shooter_id) # send back to shooter to confirm hit
+        print(f"Base hit reported by equipment {shooter_id}")
+        return
+
+    shooter_team, shooter = find_player_by_equipment_id(shooter_id)
+    target_team, target = find_player_by_equipment_id(target_id)
+
+    if shooter is None or target is None:
+        print(f"Could not find shooter {shooter_id} or target {target_id}")
+        return
+
+    if shooter_team == target_team:
+        shooter["score"] -= 10
+        target["score"] -= 10
+
+        # traffic generator expects two responses for freindly fire
+        udp.broadcast(shooter_id)
+        udp.broadcast(target_id)
+
+        print(f"Friendly fire: {shooter['codename']} and " f"{target['codename']} each lose 10 points")
+    else:
+        # normal hit so acknowledge equipment ID of the player hit
+        udp.broadcast(target_id)
+        print(f"{shooter['codename']} hit opponent " f"{target['codename']}")
 
 def get_id_rect(team, row):
     x = TEAM_X[team] + NUMBER_WIDTH
@@ -331,9 +379,19 @@ def draw_countdown_screen():
 def draw_play_action_screen():
     screen.fill((0, 0, 0))
 
-    label = FONT.render("PLAY ACTION SCREEN (events coming soon)", True, (255, 255, 255))
-    label_rect = label.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-    screen.blit(label, label_rect)
+    title = FONT.render("LASER TAG - GAME IN PROCESS", True, (255, 255, 255))
+    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 20))
+
+    for team_name, team_color, x in (("red", (255, 100, 100), 50), ("green", (100, 255, 100), 520),):
+        team_title = FONT.render(f"{team_name.upper()} TEAM", True, team_color)
+        screen.blit(team_title, (x, 70))
+
+        y = 110
+        for player in get_team_list(team_name):
+            if player["equipment_id"].strip():
+                label = SMALL_FONT.render(f"{player['codename']} (ID {player['equipment_id']}): " f"{player['score']} pts", True, (255, 255, 255),)
+                screen.blit(label, (x, y))
+                y+= 28
 
 def draw_entry_screen():
     screen.fill((0, 0, 0))
@@ -377,6 +435,9 @@ while running:
    incoming = udp.receive()
    if incoming:
        print(f"Received: {incoming}")
+       # ensure hit messages only processed during gameplay
+       if current_screen == "play_action":
+           process_hit(incoming)
 
    if current_screen == "entry":
        draw_entry_screen()
