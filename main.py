@@ -632,6 +632,7 @@ while running:
    elif current_screen == "countdown":
        draw_countdown_screen()
        if get_countdown_seconds() == 0:
+           udp.broadcast(202)
            current_screen = "play_action"
    elif current_screen == "play_action":
        draw_play_action_screen()
