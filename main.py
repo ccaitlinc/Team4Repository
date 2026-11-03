@@ -82,6 +82,14 @@ network_message_color = (200, 200, 200)
 #screen state variable
 current_screen = "entry"  # "entry", "countdown", or "play_action"
 
+# play-by-play log shown on the play action screen (newest last)
+event_log = []
+
+def add_event(text):
+    event_log.append(text)
+    if len(event_log) > 50:
+        event_log.pop(0)   # keep the list from growing forever
+
 def show_splash_screen(screen):
    logo = pygame.image.load(Path(__file__).parent / "assets" / "logo.jpg").convert()
 
@@ -253,6 +261,7 @@ def clear_all_entries():
     waiting_for_equipment = False
     equipment_target = None
     equipment_input = ""
+    event_log.clear()
 
 def start_network_edit():
     global editing_network, network_input
