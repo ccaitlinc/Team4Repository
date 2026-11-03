@@ -180,15 +180,17 @@ def process_hit(message):
 
     # base codes are handled separately from player hits
     if target_id in ("43", "53"):
-        if target_id == "43" and shooter_team == "red":
+        if target_id == "43" and shooter_team == "red" and not shooter["has_base"]:
             shooter["score"] += 100
             shooter["has_base"] = True
-            print (f"{shooter['codename']} scored on the green base!")
+            print(f"{shooter['codename']} scored on the green base!")
+            add_event(f"{shooter['codename']} scored on the green base! (+100)")
 
-        elif target_id == "53" and shooter_team == "green":
+        elif target_id == "53" and shooter_team == "green" and not shooter["has_base"]:
             shooter["score"] += 100
             shooter["has_base"] = True
             print(f"{shooter['codename']} scored on the red base!")
+            add_event(f"{shooter['codename']} scored on the red base! (+100)")
 
         else:
             print(f"{shooter['codename']} hit base code {target_id}")
