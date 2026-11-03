@@ -464,6 +464,21 @@ def draw_countdown_screen():
     image_rect = countdown_image.get_rect(center=(WIDTH // 2, HEIGHT // 2))
     screen.blit(countdown_image, image_rect)
 
+def draw_event_log(rect):
+    """Draw the newest events that fit in rect. Older ones drop off the top."""
+    line_height = 20
+    max_lines = (rect.height - 10) // line_height
+
+    if event_log:
+        visible = event_log[-max_lines:]   # newest lines, oldest at the top
+    else:
+        visible = ["Waiting for game events..."]
+
+    screen.set_clip(rect)   # long messages get cut at the panel edge
+    for i, line in enumerate(visible):
+        line_surface = SMALL_FONT.render(line, True, (200, 200, 200))
+        screen.blit(line_surface, (rect.x + 15, rect.y + 5 + i * line_height))
+    screen.set_clip(None)
 
 
 def draw_play_action_screen():
@@ -625,13 +640,8 @@ def draw_play_action_screen():
     )
     screen.blit(log_title, (65, 493))
 
-    # Placeholder for future game events
-    log_message = SMALL_FONT.render(
-        "Waiting for game events...",
-        True,
-        (180, 180, 180)
-    )
-    screen.blit(log_message, (70, 540))
+    # Scrolling event log (newest events at the bottom)
+    draw_event_log(pygame.Rect(50, 523, 900, 122))
 
     # Footer
     footer = SMALL_FONT.render(
