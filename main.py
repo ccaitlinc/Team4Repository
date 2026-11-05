@@ -216,6 +216,7 @@ def process_hit(message):
         udp.broadcast(target_id)
 
         print(f"Friendly fire: {shooter['codename']} and " f"{target['codename']} each lose 10 points")
+        add_event(f"Friendly fire: {shooter['codename']} and {target['codename']} each lose 10 points")
     else:
         # normal hit so acknowledge equipment ID of the player hit
         udp.broadcast(target_id)

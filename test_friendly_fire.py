@@ -12,6 +12,7 @@ needed_functions = {
     "get_team_list",
     "find_player_by_equipment_id",
     "process_hit",
+    "add_event",
 }
 
 functions = [
@@ -40,6 +41,7 @@ class FakeUDP:
 environment = {
     "MAX_PLAYERS_PER_TEAM": 15,
     "udp": FakeUDP(),
+    "event_log": [],
 }
 
 test_module = ast.Module(body=functions, type_ignores=[])
@@ -68,6 +70,7 @@ red_team = environment["red_team"]
 green_team = environment["green_team"]
 responses = environment["udp"].responses
 process_hit = environment["process_hit"]
+event_log = environment["event_log"]
 
 
 # Test friendly fire.
@@ -78,6 +81,8 @@ assert red_team[1]["score"] == -10
 assert green_team[0]["score"] == 0
 assert len(responses) == 2
 assert set(responses) == {"101", "102"}
+assert len(event_log) == 1
+assert "Friendly fire" in event_log[0]
 
 print("\nPASS: Shooter loses 10 points.")
 print("PASS: Teammate loses 10 points.")
