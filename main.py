@@ -255,7 +255,7 @@ def stop_editing():
 MUSIC_FOLDER = Path(__file__).parent / "photon_tracks"
 
 # the second in Track01 where the voice says "begin" 
-BEGIN_TIME_TRACK01 = 19.0
+BEGIN_TIME_TRACK01 = 17.0
 
 TRACK_OFFSETS = {
     "Track01.mp3": 0.00,
