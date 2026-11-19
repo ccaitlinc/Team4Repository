@@ -73,6 +73,22 @@ countdown_active = False # tells program if countdown is currently running
 countdown_start_time = 0 # records when countdown started
 COUNTDOWN_SECONDS = 30 # duration of countdown = 30 seconds
 
+# Six-minute gameplay timer
+GAME_DURATION_SECONDS = 6 * 60
+game_start_time = None
+game_end_logged = False
+
+
+def get_game_seconds_remaining():
+    if game_start_time is None:
+        return GAME_DURATION_SECONDS
+
+    elapsed_ms = pygame.time.get_ticks() - game_start_time
+    remaining_ms = GAME_DURATION_SECONDS * 1000 - elapsed_ms
+
+    return max(0, (remaining_ms + 999) // 1000)
+
+
 # changing the UDP network address from inside the app
 editing_network = False
 network_input = ""
@@ -250,10 +266,17 @@ def stop_editing():
     active_field = None
     input_text = ""
 
+
 def start_game():
-    global current_screen
+    global current_screen, game_start_time, game_end_logged
+
+    # Reset the game timer before the 30-second countdown
+    game_start_time = None
+    game_end_logged = False
+
     current_screen = "countdown"
     start_countdown()
+
 
 
 def clear_all_entries():
@@ -492,9 +515,24 @@ def draw_play_action_screen():
     subtitle = FONT.render("PLAY ACTION DISPLAY", True, (190, 190, 190))
     screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 78)))
 
-    # Game timer placeholder
-    timer_text = SMALL_FONT.render("GAME TIMER: --:--", True, (255, 255, 255))
-    screen.blit(timer_text, timer_text.get_rect(center=(WIDTH // 2, 105)))
+    # Game timer
+    remaining = get_game_seconds_remaining()
+    minutes = remaining // 60
+    seconds = remaining % 60
+
+    if remaining == 0:
+        timer_label = "GAME OVER - 00:00"
+        timer_color = (255, 80, 80)
+    else:
+        timer_label = f"GAME TIMER: {minutes:02d}:{seconds:02d}"
+        timer_color = (255, 255, 255)
+
+    timer_text = FONT.render(timer_label, True, timer_color)
+    screen.blit(
+        timer_text,
+        timer_text.get_rect(center=(WIDTH // 2, 105))
+    )
+
 
     teams = [
         ("red", "RED TEAM", (150, 0, 0), 50),
@@ -703,32 +741,51 @@ show_splash_screen(screen)
 running = True
 
 while running:
-   for event in pygame.event.get():
-      if event.type == pygame.QUIT:
-         running = False
-      elif event.type == pygame.MOUSEBUTTONDOWN:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
             handle_mouse_click(event.pos)
-      elif event.type == pygame.KEYDOWN:
+        elif event.type == pygame.KEYDOWN:
             handle_key_input(event)
-   incoming = udp.receive()
-   if incoming:
-       print(f"Received: {incoming}")
-       # ensure hit messages only processed during gameplay
-       if current_screen == "play_action":
-           process_hit(incoming)
 
-   if current_screen == "entry":
-       draw_entry_screen()
-   elif current_screen == "countdown":
-       draw_countdown_screen()
-       if get_countdown_seconds() == 0:
-           udp.broadcast(202)
-           current_screen = "play_action"
-   elif current_screen == "play_action":
-       draw_play_action_screen()
 
-   pygame.display.flip()
-   clock.tick(60)
+    # Check if six-minute game has ended
+    if (
+        current_screen == "play_action"
+        and get_game_seconds_remaining() == 0
+        and not game_end_logged
+    ):
+        game_end_logged = True
+        add_event("GAME OVER! Final scores are displayed.")
+
+    incoming = udp.receive()
+    if incoming:
+        print(f"Received: {incoming}")
+
+        # process hits while gameplay timer is running
+        if (
+            current_screen == "play_action"
+            and get_game_seconds_remaining() > 0
+        ):
+            process_hit(incoming)
+
+    if current_screen == "entry":
+        draw_entry_screen()
+    elif current_screen == "countdown":
+        draw_countdown_screen()
+
+        if get_countdown_seconds() == 0:
+            udp.broadcast(202)
+
+            game_start_time = pygame.time.get_ticks()
+            add_event("Game started: Six minutes remaining.")
+            current_screen = "play_action"
+    elif current_screen == "play_action":
+        draw_play_action_screen()
+
+    pygame.display.flip()
+    clock.tick(60)
 
 
 
