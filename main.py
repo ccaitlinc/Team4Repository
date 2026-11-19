@@ -1,5 +1,6 @@
 import pygame
 import sys
+import random
 import argparse
 import psycopg2
 import udp
@@ -250,10 +251,64 @@ def stop_editing():
     active_field = None
     input_text = ""
 
+#                                                       MUSIC 
+MUSIC_FOLDER = Path(__file__).parent / "photon_tracks"
+
+# the second in Track01 where the voice says "begin" 
+BEGIN_TIME_TRACK01 = 19.0
+
+TRACK_OFFSETS = {
+    "Track01.mp3": 0.00,
+    "Track02.mp3": 1.44,
+    "Track03.mp3": 0.43,
+    "Track04.mp3": 0.76,
+    "Track05.mp3": 0.75,
+    "Track06.mp3": -0.05,
+    "Track07.mp3": 0.97,
+    "Track08.mp3": 1.16,
+}
+
+music_track = None      # which mp3 was picked
+music_start_time = 0    # when the mp3 should start
+music_playing = False   # has the mp3 started yet?
+
+def pick_random_music():
+    """Pick a random track and work out when to start it so 'begin' lands at the end of the countdown."""
+    global music_track, music_start_time, music_playing
+    tracks = sorted(MUSIC_FOLDER.glob("*.mp3"))
+    if not tracks:
+        print("No music tracks found in photon_tracks/")
+        music_track = None
+        return
+    music_track = random.choice(tracks)
+    begin_in_this_track = BEGIN_TIME_TRACK01 + TRACK_OFFSETS.get(music_track.name, 0)
+    wait_seconds = COUNTDOWN_SECONDS - begin_in_this_track
+    music_start_time = countdown_start_time + int(wait_seconds * 1000)
+    music_playing = False
+    print(f"Picked {music_track.name}, it will start {wait_seconds:.2f}s into the countdown")
+
+def update_music():
+    """Start the track at the right moment. Called every frame during the countdown."""
+    global music_playing
+    if music_track is None or music_playing:
+        return
+    now = pygame.time.get_ticks()
+    if now < music_start_time:
+        return
+    music_playing = True
+    skip_seconds = (now - music_start_time) / 1000
+    try:
+        pygame.mixer.music.load(str(music_track))
+        pygame.mixer.music.play(start=skip_seconds)
+        print(f"Playing music: {music_track.name}")
+    except pygame.error as error:
+        print(f"Could not play music: {error}")
+
 def start_game():
     global current_screen
     current_screen = "countdown"
     start_countdown()
+    pick_random_music()
 
 
 def clear_all_entries():
@@ -720,6 +775,7 @@ while running:
    if current_screen == "entry":
        draw_entry_screen()
    elif current_screen == "countdown":
+       update_music()
        draw_countdown_screen()
        if get_countdown_seconds() == 0:
            udp.broadcast(202)
