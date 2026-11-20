@@ -49,6 +49,7 @@ NAME_WIDTH = COLUMN_WIDTH - NUMBER_WIDTH - ID_WIDTH
 START_BUTTON_RECT = pygame.Rect(700, 630, 120, 40)
 CLEAR_BUTTON_RECT = pygame.Rect(830, 630, 120, 40)
 NETWORK_BUTTON_RECT = pygame.Rect(570, 630, 120, 40)
+BACK_BUTTON_RECT = pygame.Rect(830, 652, 120, 36)
 
 
 def make_empty_team():
@@ -160,6 +161,13 @@ def update_player(player_id, codename):
 def get_team_list(team):
     return red_team if team == "red" else green_team
 
+def get_team_score(team):
+    return sum(
+        player.get("score", 0)
+        for player in get_team_list(team)
+        if str(player["id"]).strip() and str(player["codename"]).strip()
+    )
+
 # player lookup function for equipment ID
 def find_player_by_equipment_id(equipment_id):
     """Return (team_name, player) for an equipment ID, or (None, None)."""
@@ -237,7 +245,9 @@ def process_hit(message):
     else:
         # normal hit so acknowledge equipment ID of the player hit
         udp.broadcast(target_id)
+        shooter["score"] += 10
         print(f"{shooter['codename']} hit opponent {target['codename']}")
+        add_event(f"{shooter['codename']} hit {target['codename']} (+10)")
 
 def get_id_rect(team, row):
     x = TEAM_X[team] + NUMBER_WIDTH
@@ -417,10 +427,33 @@ def save_active_field():
             start_equipment_prompt(team, row)
 
 
+def stop_music():
+    try:
+        pygame.mixer.music.stop()
+    except pygame.error:
+        pass  # sound is not available, nothing to stop
+
+def back_to_entry():
+    """Go back to the player entry screen after the game ends. Players stay, scores reset."""
+    global current_screen, game_start_time, game_end_logged
+    for team in ("red", "green"):
+        for player in get_team_list(team):
+            player["score"] = 0
+            player["has_base"] = False
+    event_log.clear()
+    game_start_time = None
+    game_end_logged = False
+    stop_music()
+    current_screen = "entry"
+
+
 def handle_mouse_click(pos):
     global editing_network
+    if current_screen == "play_action" and game_end_logged and BACK_BUTTON_RECT.collidepoint(pos):
+        back_to_entry()
+        return
     if current_screen != "entry":
-        return # handle the back-to-entry button before this line
+        return
 
     if editing_network:
         editing_network = False  # clicking anywhere cancels an unsaved network change
@@ -616,6 +649,9 @@ def draw_play_action_screen():
             and str(player["codename"]).strip()
         ]
 
+        # Highest score first
+        registered_players.sort(key=lambda player: player.get("score", 0), reverse=True)
+
         # Player count
         count_label = SMALL_FONT.render(
             f"Players: {len(registered_players)}/{MAX_PLAYERS_PER_TEAM}",
@@ -698,15 +734,21 @@ def draw_play_action_screen():
         )
 
 
-        team_score = sum(
-            player.get("score", 0)
-            for player in registered_players
-        )
+        team_score = get_team_score(team_key)
+
+        # The team in the lead flashes during the game
+        other_team = "green" if team_key == "red" else "red"
+        is_leading = team_score > get_team_score(other_team)
+        flash_on = (pygame.time.get_ticks() // 400) % 2 == 0
+        if is_leading and not game_end_logged:
+            score_color = (255, 215, 0) if flash_on else (90, 90, 90)
+        else:
+            score_color = (255, 255, 255)
 
         total_label = SMALL_FONT.render(
             f"TEAM SCORE: {team_score}",
             True,
-            (255, 255, 255)
+            score_color
         )
 
         screen.blit(total_label, (x + 15, 450))
@@ -738,7 +780,7 @@ def draw_play_action_screen():
 
     # Footer
     footer = SMALL_FONT.render(
-        "Game in progress - waiting for events",
+        "Game over - click Back to Entry" if game_end_logged else "Game in progress - waiting for events",
         True,
         (180, 180, 180)
     )
@@ -746,6 +788,12 @@ def draw_play_action_screen():
         footer,
         footer.get_rect(center=(WIDTH // 2, 670))
     )
+
+    # Back to Entry button (only shows after the game is over)
+    if game_end_logged:
+        pygame.draw.rect(screen, (0, 70, 140), BACK_BUTTON_RECT)
+        back_label = SMALL_FONT.render("Back to Entry", True, (255, 255, 255))
+        screen.blit(back_label, (BACK_BUTTON_RECT.x + 10, BACK_BUTTON_RECT.y + 10))
 
 
 def draw_entry_screen():
@@ -812,6 +860,9 @@ while running:
     ):
         game_end_logged = True
         add_event("GAME OVER! Final scores are displayed.")
+        stop_music()
+        for _ in range(3):
+            udp.broadcast(221)  # tell the traffic generator the game is over
 
     incoming = udp.receive()
     if incoming:
